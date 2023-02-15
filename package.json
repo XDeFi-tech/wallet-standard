@@ -1,7 +1,7 @@
 {
     "private": true,
     "name": "@xdefi-tech/wallet-standard",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "author": "Amin Limbada <amin@xdefi.io>",
     "repository": "https://github.com/XDeFi-tech/wallet-standard/",
     "license": "Apache-2.0",
