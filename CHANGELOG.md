@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Features
 
+* Initial commit ([0b9c6e8](https://github.com/XDeFi-tech/wallet-standard/commit/0b9c6e89c38ef502544e5e772f9bed6ea9c69169))
+
+## 1.0.0 (2023-02-15)
+
+
+### Features
+
 * add @wallet-standard/ethereum-chains package ([7404f34](https://github.com/XDeFi-tech/wallet-standard/commit/7404f34777e5e62d54772ff65e3574f3a2f2879e))
 * add connect logic ([05a5bd5](https://github.com/XDeFi-tech/wallet-standard/commit/05a5bd518e77f8fc155a75246e95f4ac51a190ce))
 * add Connect page ([a7101f0](https://github.com/XDeFi-tech/wallet-standard/commit/a7101f0eb9c749e2ed1e3817066b25fc30804dc1))
