@@ -1,17 +1,17 @@
 import type { PublicKey, SendOptions, Transaction, TransactionSignature, VersionedTransaction } from '@solana/web3.js';
 
-export interface XDEFIWalletEvent {
+export interface CtrlWalletEvent {
     connect(...args: unknown[]): unknown;
     disconnect(...args: unknown[]): unknown;
     accountChanged(...args: unknown[]): unknown;
 }
 
-export interface XDEFIWalletEventEmitter {
-    on<E extends keyof XDEFIWalletEvent>(event: E, listener: XDEFIWalletEvent[E], context?: any): void;
-    off<E extends keyof XDEFIWalletEvent>(event: E, listener: XDEFIWalletEvent[E], context?: any): void;
+export interface CtrlWalletEventEmitter {
+    on<E extends keyof CtrlWalletEvent>(event: E, listener: CtrlWalletEvent[E], context?: any): void;
+    off<E extends keyof CtrlWalletEvent>(event: E, listener: CtrlWalletEvent[E], context?: any): void;
 }
 
-export interface XDEFIWallet extends XDEFIWalletEventEmitter {
+export interface CtrlWallet extends CtrlWalletEventEmitter {
     publicKey: PublicKey | null;
     connect(options?: { onlyIfTrusted?: boolean }): Promise<{ publicKey: PublicKey }>;
     disconnect(): Promise<void>;

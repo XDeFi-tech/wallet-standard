@@ -9,7 +9,7 @@ import type {
     SolanaSignTransactionMethod,
     SolanaSignTransactionOutput,
 } from '@solana/wallet-standard-features';
-import { Transaction, VersionedTransaction } from '@solana/web3.js';
+import type { Transaction, VersionedTransaction } from '@solana/web3.js';
 import type { Wallet } from '@wallet-standard/base';
 import type {
     ConnectFeature,
@@ -22,27 +22,46 @@ import type {
     EventsOnMethod,
 } from '@wallet-standard/features';
 import bs58 from 'bs58';
-import { XDEFIWalletWalletAccount } from './account.js';
+import { CtrlWalletWalletAccount } from './account.js';
 import { icon } from './icon.js';
 import type { SolanaChain } from './solana.js';
 import { isSolanaChain, SOLANA_CHAINS } from './solana.js';
 import { bytesEqual } from './util.js';
-import type { XDEFIWallet } from './window.js';
+import type { CtrlWallet } from './window.js';
 
-export type XDEFIWalletFeature = {
-    'xdefiWallet:': {
-        xdefiWallet: XDEFIWallet;
+export type CtrlWalletFeature = {
+    'ctrlWallet:': {
+        ctrlWallet: CtrlWallet;
     };
 };
 
-export class XDEFIWalletWallet implements Wallet {
+export class CtrlWalletWallet implements Wallet {
     readonly #listeners: { [E in EventsNames]?: EventsListeners[E][] } = {};
     readonly #version = '1.0.0' as const;
-    readonly #name = 'XDEFI Wallet' as const;
+    readonly #name = 'Ctrl Wallet' as const;
     readonly #icon = icon;
-    #account: XDEFIWalletWalletAccount | null = null;
-    readonly #xdefiWallet: XDEFIWallet;
+    #account: CtrlWalletWalletAccount | null = null;
+    readonly #ctrlWallet: CtrlWallet;
 
+    hooks: {
+        versionedTransactionDeserialize: (transaction: Uint8Array) => VersionedTransaction;
+        transactionFrom: (transaction: Uint8Array) => Transaction;
+    };
+
+    constructor(ctrlWallet: CtrlWallet, options: { hooks: CtrlWalletWallet['hooks'] }) {
+        this.hooks = options.hooks;
+        if (new.target === CtrlWalletWallet) {
+            Object.freeze(this);
+        }
+
+        this.#ctrlWallet = ctrlWallet;
+
+        ctrlWallet.on('connect', this.#connected, this);
+        ctrlWallet.on('disconnect', this.#disconnected, this);
+        ctrlWallet.on('accountChanged', this.#reconnected, this);
+
+        this.#connected();
+    }
     get version() {
         return this.#version;
     }
@@ -65,7 +84,7 @@ export class XDEFIWalletWallet implements Wallet {
         SolanaSignAndSendTransactionFeature &
         SolanaSignTransactionFeature &
         SolanaSignMessageFeature &
-        XDEFIWalletFeature {
+        CtrlWalletFeature {
         return {
             'standard:connect': {
                 version: '1.0.0',
@@ -93,28 +112,14 @@ export class XDEFIWalletWallet implements Wallet {
                 version: '1.0.0',
                 signMessage: this.#signMessage,
             },
-            'xdefiWallet:': {
-                xdefiWallet: this.#xdefiWallet,
+            'ctrlWallet:': {
+                ctrlWallet: this.#ctrlWallet,
             },
         };
     }
 
     get accounts() {
         return this.#account ? [this.#account] : [];
-    }
-
-    constructor(xdefiWallet: XDEFIWallet) {
-        if (new.target === XDEFIWalletWallet) {
-            Object.freeze(this);
-        }
-
-        this.#xdefiWallet = xdefiWallet;
-
-        xdefiWallet.on('connect', this.#connected, this);
-        xdefiWallet.on('disconnect', this.#disconnected, this);
-        xdefiWallet.on('accountChanged', this.#reconnected, this);
-
-        this.#connected();
     }
 
     #on: EventsOnMethod = (event, listener) => {
@@ -132,14 +137,14 @@ export class XDEFIWalletWallet implements Wallet {
     }
 
     #connected = () => {
-        const address = this.#xdefiWallet.publicKey?.toBase58();
+        const address = this.#ctrlWallet.publicKey?.toBase58();
         if (address) {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const publicKey = this.#xdefiWallet.publicKey!.toBytes();
+            const publicKey = this.#ctrlWallet.publicKey!.toBytes();
 
             const account = this.#account;
             if (!account || account.address !== address || !bytesEqual(account.publicKey, publicKey)) {
-                this.#account = new XDEFIWalletWalletAccount({ address, publicKey });
+                this.#account = new CtrlWalletWalletAccount({ address, publicKey });
                 this.#emit('change', { accounts: this.accounts });
             }
         }
@@ -153,7 +158,7 @@ export class XDEFIWalletWallet implements Wallet {
     };
 
     #reconnected = () => {
-        if (this.#xdefiWallet.publicKey) {
+        if (this.#ctrlWallet.publicKey) {
             this.#connected();
         } else {
             this.#disconnected();
@@ -162,7 +167,7 @@ export class XDEFIWalletWallet implements Wallet {
 
     #connect: ConnectMethod = async ({ silent } = {}) => {
         if (!this.#account) {
-            await this.#xdefiWallet.connect(silent ? { onlyIfTrusted: true } : undefined);
+            await this.#ctrlWallet.connect(silent ? { onlyIfTrusted: true } : undefined);
         }
 
         this.#connected();
@@ -171,7 +176,7 @@ export class XDEFIWalletWallet implements Wallet {
     };
 
     #disconnect: DisconnectMethod = async () => {
-        await this.#xdefiWallet.disconnect();
+        await this.#ctrlWallet.disconnect();
     };
 
     #signAndSendTransaction: SolanaSignAndSendTransactionMethod = async (...inputs) => {
@@ -186,8 +191,8 @@ export class XDEFIWalletWallet implements Wallet {
             if (account !== this.#account) throw new Error('invalid account');
             if (!isSolanaChain(chain)) throw new Error('invalid chain');
 
-            const { signature } = await this.#xdefiWallet.signAndSendTransaction(
-                VersionedTransaction.deserialize(transaction),
+            const { signature } = await this.#ctrlWallet.signAndSendTransaction(
+                this.hooks.versionedTransactionDeserialize(transaction),
                 {
                     preflightCommitment,
                     minContextSlot,
@@ -217,8 +222,8 @@ export class XDEFIWalletWallet implements Wallet {
             if (account !== this.#account) throw new Error('invalid account');
             if (chain && !isSolanaChain(chain)) throw new Error('invalid chain');
 
-            const signedTransaction = await this.#xdefiWallet.signTransaction(
-                VersionedTransaction.deserialize(transaction)
+            const signedTransaction = await this.#ctrlWallet.signTransaction(
+                this.hooks.versionedTransactionDeserialize(transaction)
             );
 
             outputs.push({ signedTransaction: signedTransaction.serialize() });
@@ -236,9 +241,9 @@ export class XDEFIWalletWallet implements Wallet {
                 }
             }
 
-            const transactions = inputs.map(({ transaction }) => Transaction.from(transaction));
+            const transactions = inputs.map(({ transaction }) => this.hooks.transactionFrom(transaction));
 
-            const signedTransactions = await this.#xdefiWallet.signAllTransactions(transactions);
+            const signedTransactions = await this.#ctrlWallet.signAllTransactions(transactions);
 
             outputs.push(
                 ...signedTransactions.map((signedTransaction) => ({ signedTransaction: signedTransaction.serialize() }))
@@ -258,7 +263,7 @@ export class XDEFIWalletWallet implements Wallet {
             const { message, account } = inputs[0]!;
             if (account !== this.#account) throw new Error('invalid account');
 
-            const { signature } = await this.#xdefiWallet.signMessage(message);
+            const { signature } = await this.#ctrlWallet.signMessage(message);
 
             outputs.push({ signedMessage: message, signature });
         } else if (inputs.length > 1) {
