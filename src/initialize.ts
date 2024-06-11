@@ -1,12 +1,12 @@
 import { registerWallet } from './register.js';
-import { XDEFIWalletWallet } from './wallet.js';
-import type { XDEFIWallet } from './window.js';
+import { CtrlWalletWallet } from './wallet.js';
+import type { CtrlWallet } from './window.js';
 
 export function initialize(
-    xdefiWallet: XDEFIWallet,
+    ctrlWallet: CtrlWallet,
     options: {
-        hooks: XDEFIWalletWallet['hooks'];
+        hooks: CtrlWalletWallet['hooks'];
     }
 ): void {
-    registerWallet(new XDEFIWalletWallet(xdefiWallet, options));
+    registerWallet(new CtrlWalletWallet(ctrlWallet, options));
 }
