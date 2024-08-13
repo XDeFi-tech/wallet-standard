@@ -9,7 +9,13 @@ import type {
     SolanaSignTransactionMethod,
     SolanaSignTransactionOutput,
 } from '@solana/wallet-standard-features';
-import { Transaction, VersionedTransaction } from '@solana/web3.js';
+import bs58 from 'bs58';
+
+import { XDEFIWalletWalletAccount } from './account.js';
+import { icon } from './icon.js';
+import { isSolanaChain, SOLANA_CHAINS } from './solana.js';
+import { bytesEqual, recoverTransactionFromTransactionBytes, serializeTransaction } from './util.js';
+
 import type { Wallet } from '@wallet-standard/base';
 import type {
     ConnectFeature,
@@ -21,12 +27,7 @@ import type {
     EventsNames,
     EventsOnMethod,
 } from '@wallet-standard/features';
-import bs58 from 'bs58';
-import { XDEFIWalletWalletAccount } from './account.js';
-import { icon } from './icon.js';
 import type { SolanaChain } from './solana.js';
-import { isSolanaChain, SOLANA_CHAINS } from './solana.js';
-import { bytesEqual } from './util.js';
 import type { XDEFIWallet } from './window.js';
 
 export type XDEFIWalletFeature = {
@@ -187,7 +188,7 @@ export class XDEFIWalletWallet implements Wallet {
             if (!isSolanaChain(chain)) throw new Error('invalid chain');
 
             const { signature } = await this.#xdefiWallet.signAndSendTransaction(
-                VersionedTransaction.deserialize(transaction),
+                recoverTransactionFromTransactionBytes(transaction),
                 {
                     preflightCommitment,
                     minContextSlot,
@@ -218,10 +219,10 @@ export class XDEFIWalletWallet implements Wallet {
             if (chain && !isSolanaChain(chain)) throw new Error('invalid chain');
 
             const signedTransaction = await this.#xdefiWallet.signTransaction(
-                VersionedTransaction.deserialize(transaction)
+                recoverTransactionFromTransactionBytes(transaction)
             );
 
-            outputs.push({ signedTransaction: signedTransaction.serialize() });
+            outputs.push({ signedTransaction: serializeTransaction(signedTransaction) });
         } else if (inputs.length > 1) {
             let chain: SolanaChain | undefined = undefined;
             for (const input of inputs) {
@@ -236,12 +237,14 @@ export class XDEFIWalletWallet implements Wallet {
                 }
             }
 
-            const transactions = inputs.map(({ transaction }) => Transaction.from(transaction));
+            const transactions = inputs.map(({ transaction }) => recoverTransactionFromTransactionBytes(transaction));
 
             const signedTransactions = await this.#xdefiWallet.signAllTransactions(transactions);
 
             outputs.push(
-                ...signedTransactions.map((signedTransaction) => ({ signedTransaction: signedTransaction.serialize() }))
+                ...signedTransactions.map((signedTransaction) => ({
+                    signedTransaction: serializeTransaction(signedTransaction),
+                }))
             );
         }
 

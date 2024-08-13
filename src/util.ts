@@ -1,4 +1,5 @@
 // This is copied from @wallet-standard/wallet
+import { Transaction, VersionedTransaction } from '@solana/web3.js';
 
 export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
     return arraysEqual(a, b);
@@ -20,4 +21,27 @@ export function arraysEqual<T>(a: Indexed<T>, b: Indexed<T>): boolean {
     }
 
     return true;
+}
+
+export function isVersionedTransaction(
+    transaction: Transaction | VersionedTransaction
+): transaction is VersionedTransaction {
+    return 'version' in transaction;
+}
+
+export function recoverTransactionFromTransactionBytes(bytes: Uint8Array): Transaction | VersionedTransaction {
+    try {
+        return Transaction.from(bytes);
+    } catch (error) {
+        return VersionedTransaction.deserialize(bytes);
+    }
+}
+
+export function serializeTransaction(transaction: Transaction | VersionedTransaction) {
+    return isVersionedTransaction(transaction)
+        ? (transaction as VersionedTransaction).serialize()
+        : (transaction as Transaction).serialize({
+              requireAllSignatures: false,
+              verifySignatures: false,
+          });
 }
