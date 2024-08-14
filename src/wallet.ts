@@ -11,10 +11,10 @@ import type {
 } from '@solana/wallet-standard-features';
 import bs58 from 'bs58';
 
-import { XDEFIWalletWalletAccount } from './account';
+import { XDEFIWalletWalletAccount } from './account.js';
 import { icon } from './icon.js';
-import { isSolanaChain, SOLANA_CHAINS } from './solana';
-import { bytesEqual, recoverTransactionFromTransactionBytes, serializeTransaction } from './util';
+import { isSolanaChain, SOLANA_CHAINS } from './solana.js';
+import { bytesEqual, recoverTransactionFromTransactionBytes, serializeTransaction } from './util.js';
 
 import type { Wallet } from '@wallet-standard/base';
 import type {
