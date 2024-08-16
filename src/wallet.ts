@@ -44,8 +44,8 @@ export class CtrlWalletWallet implements Wallet {
     readonly #ctrlWallet: CtrlWallet;
 
     hooks: {
-        versionedTransactionDeserialize: (transaction: Uint8Array) => VersionedTransaction;
-        transactionFrom: (transaction: Uint8Array) => Transaction;
+        recoverTransaction: (transactionBytes: Uint8Array) => Transaction | VersionedTransaction;
+        serializeTransaction: (transaction: Transaction | VersionedTransaction) => Uint8Array;
     };
 
     constructor(ctrlWallet: CtrlWallet, options: { hooks: CtrlWalletWallet['hooks'] }) {
@@ -192,7 +192,7 @@ export class CtrlWalletWallet implements Wallet {
             if (!isSolanaChain(chain)) throw new Error('invalid chain');
 
             const { signature } = await this.#ctrlWallet.signAndSendTransaction(
-                this.hooks.versionedTransactionDeserialize(transaction),
+                this.hooks.recoverTransaction(transaction),
                 {
                     preflightCommitment,
                     minContextSlot,
@@ -223,10 +223,10 @@ export class CtrlWalletWallet implements Wallet {
             if (chain && !isSolanaChain(chain)) throw new Error('invalid chain');
 
             const signedTransaction = await this.#ctrlWallet.signTransaction(
-                this.hooks.versionedTransactionDeserialize(transaction)
+                this.hooks.recoverTransaction(transaction)
             );
 
-            outputs.push({ signedTransaction: signedTransaction.serialize() });
+            outputs.push({ signedTransaction: this.hooks.serializeTransaction(signedTransaction) });
         } else if (inputs.length > 1) {
             let chain: SolanaChain | undefined = undefined;
             for (const input of inputs) {
@@ -241,12 +241,14 @@ export class CtrlWalletWallet implements Wallet {
                 }
             }
 
-            const transactions = inputs.map(({ transaction }) => this.hooks.transactionFrom(transaction));
+            const transactions = inputs.map(({ transaction }) => this.hooks.recoverTransaction(transaction));
 
             const signedTransactions = await this.#ctrlWallet.signAllTransactions(transactions);
 
             outputs.push(
-                ...signedTransactions.map((signedTransaction) => ({ signedTransaction: signedTransaction.serialize() }))
+                ...signedTransactions.map((signedTransaction) => ({
+                    signedTransaction: this.hooks.serializeTransaction(signedTransaction),
+                }))
             );
         }
 
